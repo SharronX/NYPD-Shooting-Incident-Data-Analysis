@@ -1,0 +1,197 @@
+---
+title: "NYPD Shooting Incident Data Report"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r tidyverse}
+library(tidyverse)
+```
+
+## Step 1: Start an Rmd Document
+
+Import csv data which describes every shooting incident that occurred in NYC from 2006 to 2020.
+
+```{r get_NYPD_data}
+url_in <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+
+data <- read_csv(url_in)
+```
+
+
+## Step 2: Tidy and Transform Data
+
+Add columns to indicate day and month of the `OCCUR_DATE`, and hour of the `OCCUR_TIME`.
+
+```{r tidy_data}
+library(lubridate)
+NYPD_shooting_incident_data <- data %>% mutate(OCCUR_DATE=mdy(OCCUR_DATE), OCCUR_TIME=hms(OCCUR_TIME))
+
+NYPD_shooting_incident_data <- NYPD_shooting_incident_data %>% mutate(occur_day=wday(OCCUR_DATE, label=TRUE), occur_month=month(OCCUR_DATE, label = TRUE), occur_hour=hour(OCCUR_TIME)) %>% select(occur_day, occur_month, occur_hour, everything())
+```
+
+
+## Step 3: Visualization and Analysis
+
+We will analyze the number of incidents by date, by month, by day, and by hour separately, to understand its seasonality.
+
+### Plotting the number of shooting incidents by date:
+```{r visualize_by_date}
+total_incidents <- NYPD_shooting_incident_data %>%
+group_by(OCCUR_DATE) %>%
+summarize(nr_incident = n()) %>%
+select(OCCUR_DATE,nr_incident) %>%
+ungroup()
+
+incidents_with_murder <- NYPD_shooting_incident_data %>%
+group_by(OCCUR_DATE, STATISTICAL_MURDER_FLAG) %>%
+summarize(nr_incident_w_murder = n()) %>%
+filter(STATISTICAL_MURDER_FLAG == TRUE) %>%
+select(OCCUR_DATE,nr_incident_w_murder) %>%
+ungroup()
+
+NYPD_shooting_incident_by_date <-  total_incidents %>%
+full_join(incidents_with_murder)
+
+NYPD_shooting_incident_by_date[is.na(NYPD_shooting_incident_by_date)] <- 0
+
+NYPD_shooting_incident_by_date %>%
+ggplot(aes(x = OCCUR_DATE, y = nr_incident)) + geom_line(aes(color = "total incidents")) + geom_point(aes(color = "total incidents")) + geom_line(aes(y = nr_incident_w_murder, color = "incidents with murder")) + geom_point(aes(y = nr_incident_w_murder, color = "incidents with murder")) + theme(legend.position="bottom",axis.text.x = element_text(angle = 90)) + labs(title = "NYPD shooting incident - By Date", y = NULL)
+```
+
+### Plotting the number of shooting incidents by month:
+```{r visualize_by_month}
+total_incidents <- NYPD_shooting_incident_data %>%
+group_by(occur_month) %>%
+summarize(nr_incident = n()) %>%
+select(occur_month,nr_incident) %>%
+ungroup()
+
+incidents_with_murder <- NYPD_shooting_incident_data %>%
+group_by(occur_month, STATISTICAL_MURDER_FLAG) %>%
+summarize(nr_incident_w_murder = n()) %>%
+filter(STATISTICAL_MURDER_FLAG == TRUE) %>%
+select(occur_month,nr_incident_w_murder) %>%
+ungroup()
+
+NYPD_shooting_incident_by_month <-  total_incidents %>%
+full_join(incidents_with_murder)
+
+NYPD_shooting_incident_by_month %>%
+ggplot(aes(x = occur_month, y = nr_incident, group = 1)) + geom_line(aes(color = "total incidents")) + geom_point(aes(color = "total incidents")) + geom_line(aes(y = nr_incident_w_murder, color = "incidents with murder")) + geom_point(aes(y = nr_incident_w_murder, color = "incidents with murder")) + theme(legend.position="bottom",axis.text.x = element_text(angle = 90)) + labs(title = "NYPD shooting incident - By Month", y = NULL)
+```
+
+Looking at the plot, summer time had a higher shooting incident rate than that in winter time.
+
+### Plotting the number of shooting incidents by day:
+```{r visualize_by_day}
+total_incidents <- NYPD_shooting_incident_data %>%
+group_by(occur_day) %>%
+summarize(nr_incident = n()) %>%
+select(occur_day,nr_incident) %>%
+ungroup()
+
+incidents_with_murder <- NYPD_shooting_incident_data %>%
+group_by(occur_day, STATISTICAL_MURDER_FLAG) %>%
+summarize(nr_incident_w_murder = n()) %>%
+filter(STATISTICAL_MURDER_FLAG == TRUE) %>%
+select(occur_day,nr_incident_w_murder) %>%
+ungroup()
+
+NYPD_shooting_incident_by_day <-  total_incidents %>%
+full_join(incidents_with_murder)
+
+NYPD_shooting_incident_by_day %>%
+ggplot(aes(x = occur_day, y = nr_incident, group = 1)) + geom_line(aes(color = "total incidents")) + geom_point(aes(color = "total incidents")) + geom_line(aes(y = nr_incident_w_murder, color = "incidents with murder")) + geom_point(aes(y = nr_incident_w_murder, color = "incidents with murder")) + theme(legend.position="bottom",axis.text.x = element_text(angle = 90)) + labs(title = "NYPD shooting incident - By Day", y = NULL)
+```
+
+Weekdays had a lower shooting incident rate than weekends.
+
+### Plotting the number of shooting incidents by hour:
+```{r visualize_by_hour}
+total_incidents <- NYPD_shooting_incident_data %>%
+group_by(occur_hour) %>%
+summarize(nr_incident = n()) %>%
+select(occur_hour,nr_incident) %>%
+ungroup()
+
+incidents_with_murder <- NYPD_shooting_incident_data %>%
+group_by(occur_hour, STATISTICAL_MURDER_FLAG) %>%
+summarize(nr_incident_w_murder = n()) %>%
+filter(STATISTICAL_MURDER_FLAG == TRUE) %>%
+select(occur_hour,nr_incident_w_murder) %>%
+ungroup()
+
+NYPD_shooting_incident_by_hour <-  total_incidents %>%
+full_join(incidents_with_murder)
+
+NYPD_shooting_incident_by_hour %>%
+ggplot(aes(x = occur_hour, y = nr_incident)) + geom_line(aes(color = "total incidents")) + geom_point(aes(color = "total incidents")) + geom_line(aes(y = nr_incident_w_murder, color = "incidents with murder")) + geom_point(aes(y = nr_incident_w_murder, color = "incidents with murder")) + theme(legend.position="bottom",axis.text.x = element_text(angle = 90)) + labs(title = "NYPD shooting incident - By Hour", y = NULL)
+```
+
+We noticed that the highest incident rate occurred in the 8PM - 5AM time-frame, and the least incident rate occurred in the morning. 
+
+### Analyzing the number of shooting incidents by borough in NYC:
+```{r analyzing_data}
+total_incidents <- NYPD_shooting_incident_data %>%
+group_by(BORO) %>%
+summarize(nr_incident = n()) %>%
+select(BORO, nr_incident) %>%
+ungroup()
+
+incidents_with_murder <- NYPD_shooting_incident_data %>%
+group_by(BORO, STATISTICAL_MURDER_FLAG) %>%
+summarize(nr_incident_w_murder = n()) %>%
+filter(STATISTICAL_MURDER_FLAG == TRUE) %>%
+select(BORO, nr_incident_w_murder) %>%
+ungroup()
+
+NYPD_shooting_incident_by_BORO <-  total_incidents %>%
+full_join(incidents_with_murder)
+
+NYPD_shooting_incident_by_BORO %>%
+slice_max(nr_incident, n = 5)
+```
+Among all the boroughs, the top most number of shooting incidents occurred in Brooklyn.
+
+### Modelling the number of shooting incidents which involved murder, as a function of total incidents.
+```{r modeling}
+mod <- lm(nr_incident_w_murder ~ nr_incident, data = NYPD_shooting_incident_by_hour)
+
+summary(mod)
+
+NYPD_shooting_incident_by_hour_w_pred <- NYPD_shooting_incident_by_hour %>% mutate(pred = predict(mod))
+
+NYPD_shooting_incident_by_hour_w_pred %>% ggplot() +
+geom_point(aes(x = nr_incident, y = nr_incident_w_murder), color = "blue") +
+geom_line(aes(x = nr_incident, y = pred), color = "red")
+```
+
+As we can see from this plot, those incidents involving murder were linearly related to the number of incidents. 
+
+
+## Step 4: Conclusion and Bias Identification
+
+After analyzing the NYPD Shooting Incident Data from 2006 to 2020, we can get some brief conclusions. And the possible reasons to the observed data may be subject to my personal interpretation.
+
+1. More shooting incidents occurred in summer than winter. That might be because people tended to stay inside during cold weather.
+
+2. Weekends had more shooting incidents than weekdays. One possible reason might be weekend parties, in which people gathering would lead to some irrational conflict and staying outside late.
+
+3. For a single day, most of the shooting incidents happened during the night and early morning. Less crowd and unclear sight might be the main cause of the incidents.
+
+4. Among all the boroughs, Brooklyn had the most shooting incidents.
+
+5. It is plausible to expect a proportional relationship between murder rate and the number of total shooting incidents.
+
+
+However we didn't consider some other factors in details such as extreme weather, major events(e.g. President Election) etc. Those factors could impact the incident data significantly during a certain time. 
+
+
+## SessionInfo
+```{r sessionInfo}
+sessionInfo()
+```
